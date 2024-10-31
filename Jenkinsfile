@@ -4,7 +4,11 @@ pipeline {
     tools {
         maven 'maven-3.9.6'
     }
-
+    options {
+                // Timeout counter starts BEFORE agent is allocated
+            timeout(time: 2, unit: 'MINUTES')
+            }
+            
     stages {
         stage('Source') {
             steps {
