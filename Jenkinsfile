@@ -4,15 +4,12 @@ pipeline {
     tools {
         maven 'v3.8.2'
     }
-    parameters {
-        booleanParam(name: 'PROD_BUILD', defaultValue: true, description: 'Enable this as a production build')
-        string(name: 'SERVER_IP', defaultValue: '127.0.0.1', description: 'Provide production server IP Address.')
-    }
+    
 
     stages {
         stage('Source') {
             steps {
-                git branch: 'batch8', changelog: false, credentialsId: 'github', poll: false, url: 'https://github.com/ajilraju/spring-boot-jsp.git'
+                git branch: 'jenkins', changelog: false, poll: false, url: 'https://github.com/basilbaiju/spring-boot-jsp.git'
             }
         }
         stage('Validate') {
@@ -25,11 +22,6 @@ pipeline {
                 stage('Unit Test') {
                     steps {
                         sh 'mvn test'
-                    }
-                }
-                stage('Integration Test') {
-                    steps {
-                        echo 'Doing integration test' // Just for demonstration of the parallel job.
                     }
                 }
             }
@@ -46,7 +38,7 @@ pipeline {
                         archiveArtifacts artifacts: 'target/news-v*.jar', fingerprint: true, onlyIfSuccessful: true
                     }
                 }
-                stage('Deploying to EC2') {
+ /*               //stage('Deploying to EC2') {
                     when {
                         expression { return params.PROD_BUILD }
                     }
@@ -64,7 +56,7 @@ pipeline {
             }
         }
     }
-
+*/
     post {
         success {
             slackSend color: 'good', message: "The Build #${env.BUILD_NUMBER} was successful: ${env.BUILD_URL}"
