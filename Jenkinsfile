@@ -4,50 +4,60 @@ pipeline {
     tools {
         maven 'maven-3.9.6'
     }
+
+    environment {
+        
+        SONARQUBE_URL = 'http://40.81.20.115:9000'
+        SONARQUBE_TOKEN = credentials('sonarcred') 
+    }
+
     options {
-                // Timeout counter starts BEFORE agent is allocated
-            timeout(time: 2, unit: 'MINUTES')
-            }
-            
+        timeout(time: 5, unit: 'MINUTES')
+    }
+
     stages {
         stage('Source') {
             steps {
                 git branch: 'jenkins', changelog: false, poll: false, url: 'https://github.com/basilbaiju/spring-boot-jsp.git'
             }
         }
+
         stage('Validate') {
             steps {
                 sh 'mvn validate'
             }
         }
-        stage('Test') {
-            parallel {
-                stage('Unit Test') {
-                    steps {
-                        sh 'mvn test'
-                    }
+
+        stage('Compile') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh "mvn sonar:sonar -Dsonar.projectKey=spring-boot-jsp -Dsonar.host.url=${SONARQUBE_URL} -Dsonar.login=${SONARQUBE_TOKEN} -Dsonar.java.binaries=target/classes"
                 }
             }
         }
+
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
         stage('Build') {
             steps {
                 sh 'mvn clean package'
             }
         }
-        stage('Publishing and Deployment') {
-            stages {
-                stage('Publishing Artifacts') {
-                    steps {
-                        archiveArtifacts artifacts: 'target/news-v*.jar', fingerprint: true, onlyIfSuccessful: true
-                    }
-                }
-                stage('deploying'){
-                    steps {
-                        sh 'java -jar target/news-v1.0.7.jar --server.port=8081'
+    }
 
-                    }
-                }
-            }
+    post {
+        always {
+            cleanWs()
         }
     }
 }
