@@ -10,7 +10,12 @@ pipeline {
         SONARQUBE_TOKEN = credentials('sonarcred') 
         
         NEXUS_URL = '104.214.190.89:8081/repository/sampleapp'
-        NEXUS_CREDENTIALS = 'nexuscred' 
+        NEXUS_CREDENTIALS = 'nexuscred'
+
+        REMOTE_HOST = '3.110.60.241'
+        DIRECTORY_NAME = '/home/ubuntu/basil' 
+        JAR_FILE = 'target/news-v1.0.7.jar' 
+ 
     }
 
     options {
@@ -56,7 +61,7 @@ pipeline {
                 stage('Publishing Artifacts') {
                     steps {
                         script {
-                            // Define version based on build number or another mechanism
+                            // Define version based on build number 
                             def version = "v${env.BUILD_NUMBER}"
                             // Archive the artifact locally on Jenkins
                             archiveArtifacts artifacts: 'target/news-v*.jar', fingerprint: true, onlyIfSuccessful: true
@@ -75,12 +80,27 @@ pipeline {
                         }
                     }
                 }
-                stage('Deployment') {
-                    steps {
-                        // Deploy the artifact (you may adjust the version dynamically if needed)
-                        sh 'java -jar target/news-v1.0.7.jar --server.port=8081'
-                    }
+
+            stage('Copy JAR to Remote Server') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: '3.110.60.241', keyFileVariable: 'SSH_KEY')]) {
+                    sh """
+                        scp -i $SSH_KEY -o StrictHostKeyChecking=no ${JAR_FILE} ubuntu@${REMOTE_HOST}:${DIRECTORY_NAME}/
+                    """
                 }
+            }
+        }
+
+        stage('Run Application on Remote Server') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: '3.110.60.241', keyFileVariable: 'SSH_KEY')]) {
+                    sh """
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no ubuntu@${REMOTE_HOST} \\
+                        'sudo nohup java -jar ${DIRECTORY_NAME}/news-v1.0.7.jar --server.port=80 > ${DIRECTORY_NAME}/app.log 2>&1 &'
+                    """
+                }
+            }
+        }
             }
         }
     }
